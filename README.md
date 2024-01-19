@@ -19,7 +19,7 @@ Finally the model will be trained off LLava Dataset for desciptive and longer fo
 
 ## Example Model Outputs ## 
 
-### All Examples outside of training data ###
+### All Examples outside of training data / Unseen ###
 
 #### Input  Image ####
 <img src="https://github.com/JoeyNiestroy/GPT2MultiModal/assets/106636917/095145ac-9be4-4cae-bc1f-8855ef8315ae" width="500">
