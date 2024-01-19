@@ -17,7 +17,7 @@ The second part of training will include RL with PPO through the RLT library wit
 
 Finally the model will be trained off LLava Dataset for desciptive and longer form replies ${\color{red} \text{In-progress} }$
 
-## Examples ## 
+## Example Model Outputs ## 
 
 ### All Examples outside of training data ###
 
