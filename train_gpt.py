@@ -8,9 +8,19 @@ import os
 from tqdm import tqdm
 import argparse
 
+"""
+Traning Loop script
+
+Loads model and dataset and runs through pytorch training loop
+
+
+"""
+
+
 parser = argparse.ArgumentParser(description='Train a Multimodal LLaMaViT model.')
 
-# Define the arguments
+# Currently unused, will implement for reproducablilty 
+
 # parser.add_argument('--csv_file', type=str, default='training_data_subset.csv', help='Path to the CSV file containing the training data.')
 # parser.add_argument('--root_dir', type=str, default='/media/joey/Elements', help='Root directory of the training data.')
 # parser.add_argument('--batch_size', type=int, default=1, help='Batch size for training.')
@@ -23,9 +33,9 @@ parser.add_argument('--data_subset_range_low', type=int, default=0)
 parser.add_argument('--data_subset_range_high', type=int, default=5000)
 parser.add_argument('--tag', type=int, default=0)
 # parser.add_argument('--learning_rate', type=float, default=1e-4)
+
 # Parse the arguments
 args = parser.parse_args()
-
 low = args.data_subset_range_low
 high = args.data_subset_range_high
 tag = args.tag
@@ -36,15 +46,6 @@ tag = args.tag
 
 model = MultimodalGPTViT('gpt2', "openai/clip-vit-base-patch32")
 model.load_state_dict(torch.load('/media/joey/Elements/multimodal_temp_gpt.pth'))
-
-
-# if tag == 0:
-#     pass
-# else:
-#     model.load_state_dict(torch.load('/media/joey/Elements/multimodal_temp_gpt.pth'))
-
-
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.half()
@@ -52,7 +53,7 @@ model.train()
 
 
 
-#Training Data
+#Training Data setup
 csv_file = 'training_data_subset_vqa.csv'
 root_dir = '/media/joey/Elements'
 text_image_dataset = TextImageDataset_GPT(csv_file=csv_file, root_dir=root_dir, low = low , high  =  high)
@@ -62,11 +63,13 @@ data_loader = DataLoader(text_image_dataset, batch_size=batch_size, shuffle=True
 
 
 
-
+#Training parameters
 num_epochs = 1
 lr = 1e-4
+gradient_accumulation_steps = 128
 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=.9)
 
+#Don't have memory for these optimizers :(
 # optimizer = torch.optim.Adagrad(model.parameters(), lr=lr)
 # optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.999))
 
@@ -80,11 +83,9 @@ count = 0
 
 batch_counter = 0
 
-# Define the training loop
-gradient_accumulation_steps = 128
 
 
-#
+#Set up weight dictionary
 tokenizer = model.get_tokenizer()
 weights_vocab = torch.ones(len(tokenizer)).to(device)
 
@@ -101,7 +102,7 @@ weights_vocab[220] = 1
 weights_vocab[50259] = 0
 import time
 
-print("Data Loaded")
+print("Data Loaded, Main Loop beginning")
 
 for epoch in range(num_epochs):
     
@@ -111,7 +112,7 @@ for epoch in range(num_epochs):
     batch_counter = 0
     
     for batch in data_loader:
-        # optimizer.zero_grad()
+        # Conditional if image is not given for sample
         if isinstance(batch['image'],list):
             pass
         else:
@@ -120,17 +121,19 @@ for epoch in range(num_epochs):
         attention_mask = batch['attention_mask'].to(device)
 
         with torch.cuda.amp.autocast():
+            #Checks if image is given
             if isinstance(batch['image'],list):
                 outputs = model(input_ids, attention_mask) 
             else:
                 outputs = model(input_ids, attention_mask, image_data)
-            # current_loss = outputs.loss
+
+            
             logits = outputs.logits
 
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = input_ids[..., 1:].contiguous()
 
-
+            #Loss is only taken for tokens involved in answer
             index = (shift_labels == 50259).nonzero(as_tuple=True)[2][0]
 
             shift_labels =  shift_labels[:,:,index:]
@@ -138,13 +141,6 @@ for epoch in range(num_epochs):
             shift_logits = shift_logits[:,index:,:]
 
             loss_fct = torch.nn.CrossEntropyLoss(ignore_index= model.get_pad_token_id(),weight= weights_vocab)
-            # shift_logits = shift_logits.view(-1, model.get_text_model_vocab_size())
-            # shift_labels = shift_labels.view(-1)
-
-            # shift_labels = shift_labels.to(shift_logits.device)
-
-            # print(shift_logits.size())
-            # print(shift_labels.size())
 
             current_loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
@@ -177,6 +173,8 @@ for epoch in range(num_epochs):
     average_loss = epoch_loss / num_batches
     print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {average_loss:.4f}')
 optimizer.step()
+
+#Saving model states after loop
 torch.save(model.state_dict(), '/media/joey/Elements/multimodal_temp_gpt.pth')
 torch.save(model.state_dict(), '/media/joey/Elements/multimodal_temp_gpt_'+str(high)+'.pth')
 
