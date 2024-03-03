@@ -11,9 +11,9 @@ The total paramaters of the model are **<1 Billion**
 
 ##  Training Methods ## 
 
-First part of training used base causal language modeling objective, to avoid issues seen in early training only the answer tokens were used to calculate loss. A subset of the 2017 VQA dataset was used.  ${\color{green}\text{Currently 20/100k samples, First Epoch}}$
+First part of training used base causal language modeling objective, to avoid issues seen in early training only the answer tokens were used to calculate loss. A subset of the 2017 VQA dataset was used.  ${\color{green}\text{Currently 100k/100k samples, First Epoch}}$
 
-The second part of training will include RL with PPO through the RLT library with a basic reward model based off if the model correctly identified the correct answer Ex: -1 if wrong 1 if correct. ${\color{red} \text{Up-coming} }$
+The second part of training will include RL with PPO with a basic reward model based off if the model correctly identified the answer. Sentence similarity failed for automated reward modeling for this task (Words Red and Black are high similar tokens, but for visual question answering one is correct one is not) , so currently tagging data myself, and planning to adapt model for automating this process.  ${\color{red} \text{Up-coming} }$
 
 Finally the model will be trained off LLava Dataset for desciptive and longer form replies ${\color{red} \text{Up-coming} }$
 
